@@ -1,8 +1,9 @@
 ---
 name: orchestrator
 description: Use when the user says "orchestrate", "fan out", "spawn agents", "split this across subagents", or gives a task with 2+ independent workstreams (research + implement + test). Asks which roles and which model to use, dispatches parallel subagents, then verifies results before reporting.
-version: 1.0.0
+version: 1.1.0
 license: MIT
+compatibility: Hermes Agent, Claude Code, OpenCode, Rayu
 metadata:
   hermes:
     tags: [delegation, subagents, orchestration, parallel]
@@ -10,7 +11,21 @@ metadata:
 
 # Orchestrator
 
-You stay the orchestrator. You plan, dispatch, verify, and report. Subagents do the heavy work. Requires Hermes Agent (`delegate_task`, `clarify`).
+You stay the orchestrator. You plan, dispatch, verify, and report. Subagents do the heavy work.
+
+Works in any agent that can spawn subagents. Your model stays whatever the user picked for this session; model choices below apply only to subagents.
+
+## Your tools
+
+Find your harness by the tools you have, then read its reference once before the first dispatch.
+
+| Harness | Ask the user | Spawn a subagent | Reference |
+|---|---|---|---|
+| Hermes Agent | `clarify` (`multi_select`) | `delegate_task` (`tasks` array) | `references/hermes.md` |
+| Claude Code, Rayu | `AskUserQuestion` (`multiSelect`) | `Agent` / `Task` | `references/claude-code.md` |
+| OpenCode | `question` (`multiple`) | `task` | `references/opencode.md` |
+
+Below, **ask** means your ask tool and **spawn** means your spawn tool. With no ask tool, ask in plain text as a numbered list and wait for the answer. With no spawn tool, say so and do the work yourself, in one agent.
 
 ## When NOT to use
 
@@ -19,7 +34,7 @@ If the task is one small edit, one lookup, or one file, do it yourself and say s
 ## Hard rules
 
 1. **Ask before spawning.** Show the role menu and model picker. Skip a question only if the user already named that choice in their request, or said "same as last time" (see Session memory).
-2. **Fan out in one call.** All independent packets go in a single `delegate_task` call so they run in parallel.
+2. **Fan out in one step.** All independent packets go out together so they run in parallel: one `delegate_task` call, or several spawn calls in one message.
 3. **Disjoint files.** Each packet owns its own files. If two roles need one file, one owns it; others get a handoff note.
 4. **Delegate the work, keep the glue.** Orchestrator dispatches, reads results, reports. Implementation goes to implement packets. Plan files, todo bookkeeping, and user questions are yours.
 5. **Self-contained packets.** Subagents cannot see this conversation. See the packet template.
@@ -31,7 +46,7 @@ If the task is one small edit, one lookup, or one file, do it yourself and say s
 Restate the task in one sentence. Sketch the decomposition. If it fits one agent, say so and offer that.
 
 ### 2. Role menu
-Ask with `clarify`, `multi_select: true`. Mark the suggested roles.
+**Ask**, multi-select. Mark the suggested roles.
 
 | Role | Does |
 |---|---|
@@ -47,17 +62,17 @@ Sequencing: `explore` before `implement` on unknown ground. `review` and `test` 
 ### 3. Model picker
 Never assume a model. Every user has different providers.
 
-1. Run `hermes config get delegation.model`.
-2. If set, first option: **Use configured: `<value>`**.
-3. If unset, say so plainly. Options: **Match my current model**, **Paste a model id**, **Set a default** (user runs `hermes config set delegation.model <id>`).
+Each harness sets the subagent model differently; your reference says how. Offer, in this order:
+
+1. **Use configured / default**: the subagent model already set up (name it if you can read it).
+2. **Match my current model**: the session's model, passed explicitly.
+3. **Paste a model id**: the user types the exact id; pass it unchanged. If it looks like an alias or partial name, resolve it and confirm once.
 4. Optional: **Per-role models** (e.g. cheap model for explore, strong model for review). Ask once per role.
 
-`delegate_task` has no per-call model parameter; the pin is read from `delegation.model` at dispatch. The agent cannot edit config (guarded). Ask the user to run the command, then verify with `hermes config get delegation.model`. Do not trust "done".
-
-If the pin will not change, do not stall. See `references/cli-fallback.md` to run each packet as a CLI subagent instead.
+If the harness cannot apply the pick, say so plainly and offer what it can do. Never claim a model you did not set.
 
 ### 4. Dispatch
-One `delegate_task` call, one `tasks` entry per packet. Put this in each `context`:
+**Spawn** one subagent per packet, all at once. Give each this prompt:
 
 ```
 <role> task: <one-line goal>
@@ -70,10 +85,10 @@ Report back: <summary, files touched, deviations>
 Do not: commit, push, or touch files outside the Owns list
 ```
 
-Respect the user's parallel-child limit (`delegation.max_concurrent_children`). Batch if you have more packets than slots.
+Respect the harness's parallel limit. Batch if you have more packets than slots.
 
 ### 5. Supervise
-While children run, use `delegate_task` `action=list` to watch and `action=steer` to correct mid-run.
+If your harness can watch or steer running subagents, use it to correct mid-run. Otherwise wait for the results.
 
 When results return, per packet:
 - Implement: read the diff, judge against Accept-when.
@@ -91,6 +106,7 @@ After the user picks roles and model once, offer "reuse these picks for the rest
 ## Anti-patterns
 
 - Asking for a model per subagent when the user wanted one uniform pick (offer per-role only as opt-in).
+- Changing your own session's model. The pick is for subagents only.
 - Packets like "fix the auth bug" with no file path.
 - Running dependent packets in parallel (`test` needs `implement` output).
 - Fanning out a task one agent could finish in a minute.
