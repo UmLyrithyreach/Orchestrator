@@ -3,7 +3,7 @@ name: orchestrator
 description: Use when the user says "orchestrate", "fan out", "spawn agents", "split this across subagents", or gives a task with 2+ independent workstreams (research + implement + test). Asks which roles and which model to use, dispatches parallel subagents, then verifies results before reporting.
 version: 1.1.0
 license: MIT
-compatibility: Hermes Agent, Claude Code, OpenCode, Rayu
+compatibility: Hermes Agent, Claude Code, OpenCode, Rayu, Antigravity CLI
 metadata:
   hermes:
     tags: [delegation, subagents, orchestration, parallel]
@@ -24,6 +24,7 @@ Find your harness by the tools you have, then read its reference once before the
 | Hermes Agent | `clarify` (`multi_select`) | `delegate_task` (`tasks` array) | `references/hermes.md` |
 | Claude Code, Rayu | `AskUserQuestion` (`multiSelect`) | `Agent` / `Task` | `references/claude-code.md` |
 | OpenCode | `question` (`multiple`) | `task` | `references/opencode.md` |
+| Antigravity CLI (`agy`) | `ask_question` | `invoke_subagent` (`subagents` list) | `references/antigravity.md` |
 
 Below, **ask** means your ask tool and **spawn** means your spawn tool. With no ask tool, ask in plain text as a numbered list and wait for the answer. With no spawn tool, say so and do the work yourself, in one agent.
 
@@ -34,7 +35,7 @@ If the task is one small edit, one lookup, or one file, do it yourself and say s
 ## Hard rules
 
 1. **Ask before spawning.** Show the role menu and model picker. Skip a question only if the user already named that choice in their request, or said "same as last time" (see Session memory).
-2. **Fan out in one step.** All independent packets go out together so they run in parallel: one `delegate_task` call, or several spawn calls in one message.
+2. **Fan out in one step.** All independent packets go out together so they run in parallel: one `delegate_task` or `invoke_subagent` call, or several spawn calls in one message.
 3. **Disjoint files.** Each packet owns its own files. If two roles need one file, one owns it; others get a handoff note.
 4. **Delegate the work, keep the glue.** Orchestrator dispatches, reads results, reports. Implementation goes to implement packets. Plan files, todo bookkeeping, and user questions are yours.
 5. **Self-contained packets.** Subagents cannot see this conversation. See the packet template.

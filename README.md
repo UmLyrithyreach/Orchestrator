@@ -1,6 +1,6 @@
 # orchestrator
 
-An agent skill that fans a task out to parallel subagents, and lets **you** choose the roles and the models. Works in [Hermes Agent](https://hermes-agent.nousresearch.com), [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai) and Rayu.
+An agent skill that fans a task out to parallel subagents, and lets **you** choose the roles and the models. Works in [Hermes Agent](https://hermes-agent.nousresearch.com), [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai), Rayu and [Antigravity CLI](https://antigravity.google).
 
 Most delegation skills hardcode a subagent model. Yours won't match mine. This one asks.
 
@@ -19,6 +19,7 @@ The skill detects which agent it is running in and uses that agent's own tools:
 | Hermes Agent | `clarify` | `delegate_task` | `delegation.model` config |
 | Claude Code, Rayu | `AskUserQuestion` | `Agent` | `model` on each call |
 | OpenCode | `question` | `task` | the subagent's agent definition |
+| Antigravity CLI | `ask_question` | `invoke_subagent` | the session's model (`agy --model`) |
 
 ## Install
 
@@ -34,8 +35,9 @@ Then copy the `orchestrator` folder into your agent's skills directory:
 | Claude Code | `cp -r Orchestrator/orchestrator ~/.claude/skills/` |
 | OpenCode | `cp -r Orchestrator/orchestrator ~/.config/opencode/skills/` |
 | Rayu | `cp -r Orchestrator/orchestrator ~/.rayu/skills/` |
+| Antigravity CLI | `mkdir -p ~/.gemini/config/skills && cp -r Orchestrator/orchestrator ~/.gemini/config/skills/` |
 
-OpenCode also reads `~/.claude/skills/`, so one copy there covers both.
+OpenCode also reads `~/.claude/skills/`, so one copy there covers both. In Antigravity CLI, run `/skills reload` or start a new session.
 
 Start a new session and say: `orchestrate: add dark mode to the settings page`.
 
@@ -58,3 +60,4 @@ An agent that can ask questions and spawn subagents. Per agent:
 - **Hermes Agent**: `delegate_task` and `clarify`. Optional: `hermes config set delegation.model <id>` to pin the subagent model.
 - **Claude Code / Rayu**: nothing extra.
 - **OpenCode**: to run subagents on a specific model, define a subagent with that `model` (see `orchestrator/references/opencode.md`). The question tool is on in the TUI; for `opencode run`, set `OPENCODE_ENABLE_QUESTION_TOOL=1`.
+- **Antigravity CLI**: subagents can't take a model per call; start the session on the model you want them to use (`agy --model <id>`).
