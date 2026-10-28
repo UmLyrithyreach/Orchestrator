@@ -1,7 +1,7 @@
 ---
 name: orchestrator
-description: Use when the user says "orchestrate", "fan out", "spawn agents", "split this across subagents", or gives a task with 2+ independent workstreams (research + implement + test). Asks which roles and which model to use, dispatches parallel subagents, then verifies results before reporting.
-version: 1.1.0
+description: Use when the user says "orchestrate", "fan out", "spawn agents", "split this across subagents", or gives a task with 2+ independent workstreams (research + implement + test). Asks which roles and which model to use, dispatches parallel subagents, then verifies each result and approves it or sends it back for a redo. The main model manages and never does the implementation itself.
+version: 1.2.0
 license: MIT
 compatibility: Hermes Agent, Claude Code, OpenCode, Rayu, Antigravity CLI
 metadata:
@@ -11,7 +11,7 @@ metadata:
 
 # Orchestrator
 
-You stay the orchestrator. You plan, dispatch, verify, and report. Subagents do the heavy work.
+You stay the orchestrator: the manager, not a worker. You plan, dispatch, verify, and report. Subagents do the heavy work in their own contexts, so yours stays small.
 
 Works in any agent that can spawn subagents. Your model stays whatever the user picked for this session; model choices below apply only to subagents.
 
@@ -37,9 +37,9 @@ If the task is one small edit, one lookup, or one file, do it yourself and say s
 1. **Ask before spawning.** Show the role menu and model picker. Skip a question only if the user already named that choice in their request, or said "same as last time" (see Session memory).
 2. **Fan out in one step.** All independent packets go out together so they run in parallel: one `delegate_task` or `invoke_subagent` call, or several spawn calls in one message.
 3. **Disjoint files.** Each packet owns its own files. If two roles need one file, one owns it; others get a handoff note.
-4. **Delegate the work, keep the glue.** Orchestrator dispatches, reads results, reports. Implementation goes to implement packets. Plan files, todo bookkeeping, and user questions are yours.
+4. **Delegate the work, keep the glue.** Orchestrator dispatches, reads results, reports. While orchestrating, never edit project files or write code yourself: implementation goes to implement packets. If a result is wrong, REJECT it and send a corrected packet; do not patch it yourself. Plan files, todo bookkeeping, and user questions are yours.
 5. **Self-contained packets.** Subagents cannot see this conversation. See the packet template.
-6. **Verify before GO.** Subagent reports are self-reports. Read the diff or run the check yourself before accepting.
+6. **Verify before GO.** Subagent reports are self-reports. Read the diff (not whole files) and the test packet's evidence; run a check yourself only when no test packet covers it. Verification is the only heavy reading you do, so keep it to what the Accept-when criteria need.
 
 ## Workflow
 

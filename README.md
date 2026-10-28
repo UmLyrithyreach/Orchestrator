@@ -1,16 +1,24 @@
 # orchestrator
 
-An agent skill that fans a task out to parallel subagents, and lets **you** choose the roles and the models. Works in [Hermes Agent](https://hermes-agent.nousresearch.com), [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai), Rayu and [Antigravity CLI](https://antigravity.google).
+An agent skill that turns your main model into the manager. It splits the task, fans it out to parallel subagents with the roles and models **you** choose, checks what comes back, and approves it or sends it back to be redone. It never touches the code itself. Works in [Hermes Agent](https://hermes-agent.nousresearch.com), [Claude Code](https://claude.com/claude-code), [OpenCode](https://opencode.ai), Rayu and [Antigravity CLI](https://antigravity.google).
 
 Most delegation skills hardcode a subagent model. Yours won't match mine. This one asks.
+
+## Why
+
+- **Your main model stays lean.** Subagents read files, write code and run tests in their own contexts. The main model only sees the task packets, the diffs and the reports, so its context and its token bill stay small on big tasks.
+- **Cheap work goes to cheap models.** Pick a fast model for explore and test, a strong one for review, and keep your expensive model for managing.
+- **Nothing ships unchecked.** Every result is checked against its acceptance criteria before it counts as done.
+
+Fanning out isn't free: each subagent pays for its own context, so for a one-file edit a single agent is cheaper. The skill tells you when that's the case.
 
 ## What it does
 
 1. Scopes the task. Tells you if one agent is enough.
 2. Asks which roles to run: implement, review, test, explore, or your own.
 3. Asks which model the subagents should use (configured, current, pasted id, or per-role).
-4. Dispatches all packets in parallel.
-5. Checks every result against its acceptance criteria. Rejects and redoes up to 3 times. Reports.
+4. Dispatches all packets in parallel. Each subagent reports back when it's done.
+5. Checks every result (the diff and the test evidence) against its acceptance criteria. GO approves it; REJECT sends a corrected packet back, up to 3 times. Reports.
 
 The skill detects which agent it is running in and uses that agent's own tools:
 
@@ -22,6 +30,14 @@ The skill detects which agent it is running in and uses that agent's own tools:
 | Antigravity CLI | `ask_question` | `invoke_subagent` | the session's model (`agy --model`) |
 
 ## Install
+
+Easiest: paste this into your agent.
+
+```
+Install the skill from https://github.com/UmLyrithyreach/Orchestrator
+```
+
+It clones the repo and copies the `orchestrator` folder into its own skills directory. To do it by hand:
 
 ```bash
 git clone https://github.com/UmLyrithyreach/Orchestrator.git
