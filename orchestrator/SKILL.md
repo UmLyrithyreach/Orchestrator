@@ -63,7 +63,7 @@ The user can type a custom role via "Other" (e.g. docs, security-audit, migrate)
 
 review and explore are read-only. Where the harness can enforce that with per-agent tool limits, use it; your reference says how. Elsewhere read-only is by instruction only.
 
-Sequencing runs in waves: `explore` packets, then all `implement` packets, then `review` and `test` packets. Each wave fans out in full. A review packet starts as soon as the implement unit it covers passes its gates; it doesn't wait for sibling units. The full-suite test packet waits until every implement branch of the wave is merged.
+Sequencing runs in waves: `explore` packets, then all `implement` packets, then `review` and `test` packets. Each wave fans out in full. A review packet starts as soon as the implement unit it covers passes your re-run of its gates; it doesn't wait for sibling units. The full-suite test packet waits until every implement branch of the wave is merged.
 
 ### 3. Model picker
 Never assume a model. Every user has different providers.
@@ -98,7 +98,7 @@ Do not: touch files outside the Owns list. Commit only on your own branch; never
 - **Negative gate for fixes.** When a packet fixes a bug and a test is said to cover the fix, add a gate that sets the fix aside, runs that test, expects it to FAIL, then restores the fix:
   `git diff <base> -- <fix paths, not test paths> > <scratch>/fix.patch && git apply -R <scratch>/fix.patch` → run the test (expect failure) → `git apply <scratch>/fix.patch`.
   `git add -N` new files first. Use the patch file, never `git stash`: the stash is shared by every worktree. A test that passes either way proves nothing; a run where zero tests executed is not a pass.
-- **Review packets** carry the original requirement and the diff or branch/commit range, nothing else.
+- **Review packets** carry the original requirement, the MANUAL gates to decide, and the diff or branch/commit range, nothing else.
 - **Implement packets** run only the narrow tests covering their change. The full suite is the test packet's job, after merge.
 
 Respect the harness's parallel limit. Batch if you have more packets than slots, and say the batching.
@@ -111,7 +111,7 @@ You watch over every packet of the wave, not the role as a whole. When results r
 - MANUAL gates and review/test findings feed the verdict.
 - **GO** = done. Merge its branch into the base, then remove its worktree and branch.
 - A REJECT redoes only that packet; its GO'd siblings stand and their next-wave packets proceed.
-- A red full suite goes to a fresh implement packet carrying the failures.
+- A red full suite counts as a REJECT of the packet that owns the failing code, and escalates the same way.
 
 On REJECT, escalate the model instead of repeating:
 1. **First REJECT**: a corrected packet, carrying the findings and exact scope, to a fresh subagent on the same model.
