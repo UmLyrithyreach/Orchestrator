@@ -8,7 +8,7 @@ Most delegation skills hardcode a subagent model. Yours won't match mine. This o
 
 - **Your main model stays lean.** Subagents read files, write code and run tests in their own contexts. The main model only sees the task packets, the diffs and the reports, so its context and its token bill stay small on big tasks.
 - **Cheap work goes to cheap models.** Pick a fast model for explore and test, a strong one for review, and keep your expensive model for managing.
-- **Nothing ships unchecked.** Every result is checked against its acceptance criteria before it counts as done.
+- **Nothing ships unchecked.** Every packet ends with gates: a command and the text its output must contain. The manager re-runs them itself before anything counts as done.
 
 Fanning out isn't free: each subagent pays for its own context, so for a one-file edit a single agent is cheaper. The skill tells you when that's the case.
 
@@ -18,7 +18,7 @@ Fanning out isn't free: each subagent pays for its own context, so for a one-fil
 2. Asks which roles to run: implement, review, test, explore, or your own.
 3. Asks which model the subagents should use (configured, current, pasted id, or per-role).
 4. Splits each role into independent units and fans every role out: three implement units become three implement subagents, run in parallel on the role's model. Waves go explore → implement → review/test.
-5. Checks every result (the diff and the test evidence) against its acceptance criteria. GO approves it; REJECT sends a corrected packet back, up to 3 times. Reports.
+5. Checks every result: re-runs each packet's gates itself (a fix must also fail its test with the fix set aside), reads the diff, and gives review packets only the spec and the diff. GO merges the packet's branch. The first REJECT sends a corrected packet to a fresh subagent; the second redoes it on a stronger model; after that it stops and shows you the evidence. Reports.
 
 The skill detects which agent it is running in and uses that agent's own tools:
 
@@ -62,14 +62,23 @@ Start a new session and say: `orchestrate: add dark mode to the settings page`.
 ```
 > orchestrate: add rate limiting to the API and cover it with tests
 
-Scope: 2 independent parts (code, tests). Suggest: explore, implement, test.
-? Roles  [x] explore  [x] implement  [ ] review  [x] test
-? Model  > Use configured: my-fast-model
-Plan: explore ×1 · implement ×3 (middleware, config, routes) · test ×2 (unit, integration)
+Scope: 2 independent parts (code, tests). Suggest: explore, implement, review, test.
+? Roles  [x] explore  [x] implement  [x] review  [x] test
+? Model  > Per-role: explore, test my-fast-model · implement my-mid-model · review my-strong-model
+Plan: explore ×1 · implement ×3 (middleware, config, routes) · review ×3 · test ×1 (full suite)
 Wave 1: explore ×1... GO.
-Wave 2: implement ×3 in parallel... middleware GO, config GO, routes REJECT -> redo -> GO.
-Wave 3: test ×2 in parallel... unit 9/9, integration 5/5. Shipped.
+Wave 2: implement ×3 in parallel, one worktree each.
+  middleware  reports G1-G2 pass. Re-run: pass. Review (spec + diff): no findings. GO, merged.
+  config      reports G1 pass. Re-run: pass. GO, merged.
+  routes      reports G1-G3 pass. Re-run: G3 FAIL (no 429 over the limit). REJECT.
+              Corrected packet, fresh subagent, same model. Re-run: G3 FAIL. REJECT.
+              Redo in a fresh subagent on my-strong-model. Re-run: pass. GO, merged.
+Wave 3: test ×1, full suite after merge... reports pass. Re-run: pass. Shipped.
 ```
+
+## Don't combine with
+
+Other plugins or skills that are always on and set conflicting delegation rules, e.g. one that lets the orchestrator edit code, or one that never asks before spawning. Use one at a time.
 
 ## Requirements
 
