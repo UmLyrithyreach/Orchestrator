@@ -17,7 +17,7 @@ Fanning out isn't free: each subagent pays for its own context, so for a one-fil
 1. Scopes the task. Tells you if one agent is enough.
 2. Asks which roles to run: implement, review, test, explore, or your own.
 3. Asks which model the subagents should use (configured, current, pasted id, or per-role).
-4. Dispatches all packets in parallel. Each subagent reports back when it's done.
+4. Splits each role into independent units and fans every role out: three implement units become three implement subagents, run in parallel on the role's model. Waves go explore → implement → review/test.
 5. Checks every result (the diff and the test evidence) against its acceptance criteria. GO approves it; REJECT sends a corrected packet back, up to 3 times. Reports.
 
 The skill detects which agent it is running in and uses that agent's own tools:
@@ -65,8 +65,10 @@ Start a new session and say: `orchestrate: add dark mode to the settings page`.
 Scope: 2 independent parts (code, tests). Suggest: explore, implement, test.
 ? Roles  [x] explore  [x] implement  [ ] review  [x] test
 ? Model  > Use configured: my-fast-model
-Dispatching 1 explore packet... done. Dispatching implement + test...
-implement: GO (diff read). test: 14/14 pass. Shipped.
+Plan: explore ×1 · implement ×3 (middleware, config, routes) · test ×2 (unit, integration)
+Wave 1: explore ×1... GO.
+Wave 2: implement ×3 in parallel... middleware GO, config GO, routes REJECT -> redo -> GO.
+Wave 3: test ×2 in parallel... unit 9/9, integration 5/5. Shipped.
 ```
 
 ## Requirements
